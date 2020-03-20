@@ -2,14 +2,14 @@
 ## A multi-threaded web crawler!
 
 Using fievel is easy!
-* `javac WebCrawler.java`
-* `java WebCrawler`
+* `javac fievel.java`
+* `java fievel`
 
 That will run things in default mode, passing the `--help` command will
 show you the following (but in cool colors!):
 
 ```
-Usage: WebCrawler [--url url] [--depth D] [--verbose] [--parallel N] [--help]
+Usage: fievel [--url url] [--depth D] [--verbose] [--parallel N] [--help]
 
 --url:         The website to be used as the root for the
                recursive web crawl.

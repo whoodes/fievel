@@ -9,7 +9,7 @@ import java.io.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class WebCrawler {
+public class fievel {
 
     // https://stackoverflow.com/a/5762502
     public static final String ANSI_RESET = "\u001B[0m";
@@ -441,7 +441,7 @@ public class WebCrawler {
                     }
                     break;
                 case "--help":
-                    System.out.println(ANSI_BLUE + "\nUsage: " + ANSI_GREEN + "WebCrawler " + ANSI_BLUE +
+                    System.out.println(ANSI_BLUE + "\nUsage: " + ANSI_GREEN + "fievel " + ANSI_BLUE +
                         "[--url url] [--depth D] [--verbose] [--parallel N] [--help]\n\n" +
                         "--url:         The website to be used as the root for the\n" +
                         "               recursive web crawl.\n" + ANSI_PURPLE +
