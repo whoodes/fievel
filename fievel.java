@@ -141,8 +141,9 @@ public class fievel {
          * Starts the process.
          */
         public void run_crawler() {
-            System.out.println(ANSI_GREEN +
-                "Successfully started the web crawler with " + threads + " threads!" + ANSI_RESET);
+            System.out.println(
+                ANSI_GREEN + "Successfully started the web crawler with "
+                + threads + " threads!" + ANSI_RESET);
             get_url_pairs(this.root);
         }
 
@@ -177,7 +178,8 @@ public class fievel {
              * @param global_pairs : Reference to our list of visited urls at all previous depths.
              * @param verbose      : Passed from the Crawler class, for printing to stdout.
              */
-            public Worker(List<String> urls, ArrayList<DepthPair> global_pairs, boolean verbose) {
+            public Worker(List<String> urls, ArrayList<DepthPair> global_pairs,
+                          boolean verbose) {
                 this.urls = urls;
                 this.global_pairs = global_pairs;
                 this.verbose = verbose;
@@ -202,23 +204,19 @@ public class fievel {
              */
             public void run() {
                 // We don't care about relative links.
-                Pattern url_pattern = Pattern.compile("href=[\"'][^#/](.*?)[\"']");
+                Pattern url_pattern = Pattern.compile("href=[\"'][^#/\"'](.*?)[\"']");
                 for (String url : this.urls) {
 
-                    String path = "", host;
-                    try {
-                        host = get_url_components(url)[0];
-                        path = get_url_components(url)[1];
-                    } catch (MalformedURLException ex) {
-                        if (this.verbose) {
-                            System.out.println(ANSI_YELLOW +
-                                "Malformed URL: " + url + "\n\tSkipping..." + ANSI_RESET);
-                        }
+                    String path, host;
+                    String[] url_value = get_url_components(url);
+
+                    if ((host = url_value[0]).equals("")) {
+                        // We had a MalformedURL.
                         continue;
-                    } finally {
-                        if (path.equals("")) {
-                            path = "/";
-                        }
+                    }
+
+                    if ((path = url_value[1]).equals("")) {
+                        path = "/";
                     }
 
                     SocketFactory socketFactory = SSLSocketFactory.getDefault();
@@ -235,34 +233,32 @@ public class fievel {
                         Matcher url_substrings = url_pattern.matcher(response);
 
                         while (url_substrings.find()) {
-                            String url_to_add = url_substrings.group();
-                            // Don't do the extra work of visiting urls
-                            // that we have already been to.
+                            String url_to_add = url_substrings.group().split("[\"']")[1];
+                            if (get_url_components(url_to_add)[0].equals("")) {
+                                continue;
+                            }
                             boolean add = true;
                             outer:
                             for (DepthPair pair : this.global_pairs) {
+                                // Check for redundant links.
                                 for (String u : pair.get_urls()) {
-                                    try {
-                                        String[] test = get_url_components(url_to_add.split("[\"']")[1]);
-                                        if (u.equals(test[0] + test[1])) {
-                                            add = false;
-                                            // We don't need to keep searching for a
-                                            // match at this point.
-                                            break outer;
-                                        }
-                                    } catch (MalformedURLException ex) {
-                                        // pass
+                                    String[] test = get_url_components(url_to_add);
+                                    if (u.equals(test[0] + test[1])) {
+                                        add = false;
+                                        break outer;
                                     }
                                 }
                             }
                             if (add) {
-                                this.to_visit.append_url(url_to_add.split("[\"']")[1]);
+                                this.to_visit.append_url(url_to_add);
                             }
                         }
                     } catch (IOException e) {
                         if (this.verbose) {
-                            System.out.println(ANSI_YELLOW + "Socket creation failed due to:\n"
-                                + "\t" + e.toString() + ANSI_GREEN + "\nSkipping..." + ANSI_RESET);
+                            System.out.println(
+                                ANSI_YELLOW + "Socket creation failed due to:\n"
+                                + "\t" + e.toString() + ANSI_GREEN + "\nSkipping..."
+                                + ANSI_RESET);
                         }
                     }
                     this.visited_urls.add(host + path);
@@ -302,43 +298,42 @@ public class fievel {
 
             ArrayList<String> visited_urls = new ArrayList<>();
             ArrayList<String> visit_list = new ArrayList<>();
-            if (depth_pair.get_urls().size() == 1) {
-                // We always start with one URL.
-                Worker worker = new Worker(
-                    depth_pair.get_urls().subList(0, 1),
-                    this.url_pairs,
-                    this.verbose
-                );
-                Thread thread = new Thread(worker);
-                thread.start();
-                try {
-                    thread.join();
-                    visited_urls.addAll(worker.get_visited_urls());
-                    visit_list.addAll(worker.get_urls_to_visit());
-                } catch (InterruptedException ex) {
-                    System.out.println(ANSI_RED + "A worker unexpectedly failed!" + ANSI_RESET);
-                    System.out.println("\n\t" + ex.getMessage());
-                }
-            } else {
-                Worker[] workers = new Worker[this.threads];
-                Thread[] threads = new Thread[this.threads];
-                double split = Math.floor(depth_pair.get_urls().size() / (double) this.threads);
-
-                for (int i = 0; i < this.threads; i++) {
-                    // A hack for dealing with a bad division.
-                    double work_split = split * (i + 1);
-                    if (i == this.threads - 1) {
-                        work_split = depth_pair.get_urls().size();
-                    }
-                    workers[i] = new Worker(
-                        depth_pair.get_urls().subList(((int) split * i), (int) work_split),
+            try {
+                if (depth_pair.get_urls().size() == 1) {
+                    // We always start with one URL.
+                    Worker worker = new Worker(
+                        depth_pair.get_urls().subList(0, 1),
                         this.url_pairs,
                         this.verbose
                     );
-                    threads[i] = new Thread(workers[i]);
-                    threads[i].start();
-                }
-                try {
+                    Thread thread = new Thread(worker);
+                    thread.start();
+
+                    thread.join();
+                    visited_urls.addAll(worker.get_visited_urls());
+                    visit_list.addAll(worker.get_urls_to_visit());
+                } else {
+                    Worker[] workers = new Worker[this.threads];
+                    Thread[] threads = new Thread[this.threads];
+                    double split = Math.floor(
+                        depth_pair.get_urls().size() / (double) this.threads);
+
+                    for (int i = 0; i < this.threads; i++) {
+                        // A hack for dealing with a bad division.
+                        double work_split = split * (i + 1);
+                        if (i == this.threads - 1) {
+                            work_split = depth_pair.get_urls().size();
+                        }
+                        workers[i] = new Worker(
+                            depth_pair.get_urls().subList(
+                                ((int) split * i), (int) work_split),
+                            this.url_pairs,
+                            this.verbose
+                        );
+                        threads[i] = new Thread(workers[i]);
+                        threads[i].start();
+                    }
+
                     // These `for` loops are important to keep distinct
                     // so that we wait for the work to finish before
                     // trying to aggregate our results.
@@ -349,10 +344,12 @@ public class fievel {
                         visited_urls.addAll(workers[i].get_visited_urls());
                         visit_list.addAll(workers[i].get_urls_to_visit());
                     }
-                } catch (InterruptedException | ConcurrentModificationException ex) {
-                    System.out.println(ANSI_RED + "A worker unexpectedly failed!" + ANSI_RESET);
-                    System.out.println("\t" + ex.toString());
                 }
+            } catch (InterruptedException |
+                     ConcurrentModificationException ex) {
+                System.out.println(
+                    ANSI_RED + "A worker unexpectedly failed!" + ANSI_RESET);
+                System.out.println("\t" + ex.toString());
             }
 
             // Remove all duplicates before going deeper (cue inception music).
@@ -376,11 +373,12 @@ public class fievel {
         }
 
         /**
-         * @param inputStream  : Input stream from a given socket.
+         * @param inputStream : Input stream from a given socket.
          * @return String      : A string representation of the byte stream.
          * @throws IOException : Handled by the caller.
          */
-        private static String readAsString(final InputStream inputStream) throws IOException {
+        private static String readAsString(final InputStream inputStream)
+                throws IOException {
             // https://stackoverflow.com/a/45419247
             final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             final byte[] buffer = new byte[1024];
@@ -394,12 +392,20 @@ public class fievel {
         /**
          * @param url : The URL to have host and path split.
          * @return String[] : The host and path from the passed URL.
-         * @throws MalformedURLException : Handled by caller.
          */
-        private String[] get_url_components(String url) throws MalformedURLException {
+        private String[] get_url_components(String url) {
             // This function assumes that caller passes URLs
             // in the from `http[s?]://<host>/[<path>?]`
-            URL url_obj = new URL(url);
+            URL url_obj;
+            try {
+                url_obj = new URL(url);
+            } catch (MalformedURLException ex) {
+                if (this.verbose) {
+                    System.out.println(ANSI_YELLOW +
+                        "Malformed URL: " + url + "\n\tSkipping..." + ANSI_RESET);
+                }
+                return new String[]{"", ""};
+            }
             return new String[]{url_obj.getHost(), url_obj.getPath()};
         }
     }
