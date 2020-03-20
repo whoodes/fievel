@@ -413,10 +413,7 @@ public class WebCrawler {
         boolean verbose = false;
 
         if (args.length == 0) {
-            System.err.println(ANSI_BLUE + "Usage: " +
-                ANSI_GREEN + "WebCrawler " + ANSI_BLUE +
-                "[--url website] [--depth D] [--verbose] [--parallel N] [--help]");
-            System.exit(1);
+            System.out.println(ANSI_BLUE + "Running in default mode!" + ANSI_RESET);
         }
 
         // Parse the command line
