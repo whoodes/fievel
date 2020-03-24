@@ -6,27 +6,28 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.net.*;
 import java.io.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class fievel {
 
     // https://stackoverflow.com/a/5762502
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_BLACK = "\u001B[30m";
-    public static final String ANSI_RED = "\u001B[31m";
-    public static final String ANSI_GREEN = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE = "\u001B[34m";
-    public static final String ANSI_PURPLE = "\u001B[35m";
-    public static final String ANSI_CYAN = "\u001B[36m";
-    public static final String ANSI_WHITE = "\u001B[37m";
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_BLACK = "\u001B[30m";
+    private static final String ANSI_RED = "\u001B[31m";
+    private static final String ANSI_GREEN = "\u001B[32m";
+    private static final String ANSI_YELLOW = "\u001B[33m";
+    private static final String ANSI_BLUE = "\u001B[34m";
+    private static final String ANSI_PURPLE = "\u001B[35m";
+    private static final String ANSI_CYAN = "\u001B[36m";
+    private static final String ANSI_WHITE = "\u001B[37m";
 
     public static class DepthPair {
         private int depth = -1;
         private ArrayList<String> URLs = new ArrayList<>();
 
-        public DepthPair() {
+        DepthPair() {
 
         }
 
@@ -35,7 +36,7 @@ public class fievel {
          * @param depth : The depth where the URLs were found.
          * @Constructor
          */
-        public DepthPair(ArrayList<String> URLs, int depth) {
+        DepthPair(ArrayList<String> URLs, int depth) {
             this.depth = depth;
             this.URLs = URLs;
         }
@@ -43,7 +44,7 @@ public class fievel {
         /**
          * @param depth : Relative depth of the pair.
          */
-        public void set_depth(int depth) {
+        void set_depth(int depth) {
             this.depth = depth;
         }
 
@@ -57,28 +58,28 @@ public class fievel {
         /**
          * @return ArrayList
          */
-        public ArrayList<String> get_urls() {
+        ArrayList<String> get_urls() {
             return this.URLs;
         }
 
         /**
          * @return int
          */
-        public int get_depth() {
+        int get_depth() {
             return this.depth;
         }
 
         /**
          * @param url : A single URL to add.
          */
-        public void append_url(String url) {
+        void append_url(String url) {
             this.URLs.add(url);
         }
 
         /**
          * @param urls : An ArrayList of URLs to add.
          */
-        public void append_urls(ArrayList<String> urls) {
+        void append_urls(ArrayList<String> urls) {
             this.URLs.addAll(urls);
         }
 
@@ -128,7 +129,7 @@ public class fievel {
          * @param verbose   : Print non-critical exceptions and meta-data.
          * @Constructor
          */
-        public Crawler(int max_depth, String base_url, int threads, boolean verbose) {
+        Crawler(int max_depth, String base_url, int threads, boolean verbose) {
             this.max_depth = max_depth;
             ArrayList<String> base = new ArrayList<>();
             base.add(base_url);
@@ -140,10 +141,10 @@ public class fievel {
         /**
          * Starts the process.
          */
-        public void run_crawler() {
+        void run_crawler() {
             System.out.println(
                 ANSI_GREEN + "Successfully started the web crawler with "
-                + threads + " threads!" + ANSI_RESET);
+                    + threads + " threads!" + ANSI_RESET);
             get_url_pairs(this.root);
         }
 
@@ -153,7 +154,7 @@ public class fievel {
          *
          * @return String
          */
-        public String print_visited_urls() {
+        String print_visited_urls() {
             StringBuilder depth_pairs = new StringBuilder();
             for (DepthPair pair : this.url_pairs) {
                 depth_pairs.append(pair.toString()).append("\n");
@@ -178,8 +179,8 @@ public class fievel {
              * @param global_pairs : Reference to our list of visited urls at all previous depths.
              * @param verbose      : Passed from the Crawler class, for printing to stdout.
              */
-            public Worker(List<String> urls, ArrayList<DepthPair> global_pairs,
-                          boolean verbose) {
+            Worker(List<String> urls, ArrayList<DepthPair> global_pairs,
+                   boolean verbose) {
                 this.urls = urls;
                 this.global_pairs = global_pairs;
                 this.verbose = verbose;
@@ -237,19 +238,19 @@ public class fievel {
                             if (get_url_components(url_to_add)[0].equals("")) {
                                 continue;
                             }
-                            boolean add = true;
+                            AtomicBoolean add = new AtomicBoolean(true);
                             outer:
                             for (DepthPair pair : this.global_pairs) {
                                 // Check for redundant links.
                                 for (String u : pair.get_urls()) {
                                     String[] test = get_url_components(url_to_add);
                                     if (u.equals(test[0] + test[1])) {
-                                        add = false;
+                                        add.set(false);
                                         break outer;
                                     }
                                 }
                             }
-                            if (add) {
+                            if (add.get()) {
                                 this.to_visit.append_url(url_to_add);
                             }
                         }
@@ -257,19 +258,19 @@ public class fievel {
                         if (this.verbose) {
                             System.out.println(
                                 ANSI_YELLOW + "Socket creation failed due to:\n"
-                                + "\t" + e.toString() + ANSI_GREEN + "\nSkipping..."
-                                + ANSI_RESET);
+                                    + "\t" + e.toString() + ANSI_GREEN + "\nSkipping..."
+                                    + ANSI_RESET);
                         }
                     }
                     this.visited_urls.add(host + path);
                 }
             }
 
-            public ArrayList<String> get_urls_to_visit() {
+            ArrayList<String> get_urls_to_visit() {
                 return this.to_visit.get_urls();
             }
 
-            public ArrayList<String> get_visited_urls() {
+            ArrayList<String> get_visited_urls() {
                 return this.visited_urls;
             }
         }
@@ -358,10 +359,8 @@ public class fievel {
             visit_list.addAll(set);
             to_visit.append_urls(visit_list);
 
-            // This step doesn't actually guarantee that we won't
-            // see duplicates at different depths; Which is somewhat
-            // of a problem.
-            // TODO: Figure out an efficient solution.
+            // This, along with the `AtomicBoolean` should
+            // ensure that we don't aggregate duplicates.
             set.clear();
             set.addAll(visited_urls);
             visited_urls.clear();
@@ -419,7 +418,7 @@ public class fievel {
         boolean verbose = false;
 
         if (args.length == 0) {
-            System.out.println(ANSI_BLUE + "Running in default mode!" + ANSI_RESET);
+            System.out.println(ANSI_BLUE + "Running in default mode! Type `--help` for options." + ANSI_RESET);
         }
 
         // Parse the command line
